@@ -1,15 +1,29 @@
 use ndarray::prelude::*;
+use ndarray_rand::rand;
+use ndarray_rand::rand_distr::{StandardNormal, Uniform};
+use ndarray_rand::{RandomExt, SamplingStrategy};
+use ndarray_stats::histogram::{strategies::Sqrt, GridBuilder};
+use ndarray_stats::HistogramExt;
+use noisy_float::types::{n64, N64};
+use rand::seq::IteratorRandom;
 
 fn main() {
-    let arr1 = array![1., 2., 3., 4., 5., 6.];
-    println!("1D array: {}", arr1);
-    // 1D array VS 1D array VS 1D Vec
-    let arr1 = array![1., 2., 3., 4., 5., 6.];
-    println!("1D array: \t{}", arr1);
-
-    let ls1 = [1., 2., 3., 4., 5., 6.];
-    println!("1D list: \t{:?}", ls1);
-
-    let vec1 = vec![1., 2., 3., 4., 5., 6.];
-    println!("1D vector: \t{:?}", vec1);
+    let arr17 = Array::<f64, _>::random_using((10000, 2), StandardNormal, &mut rand::thread_rng());
+    let data = arr17.mapv(|e| n64(e));
+    let grid = GridBuilder::<Sqrt<N64>>::from_array(&data).unwrap().build();
+    let histogram = data.histogram(grid);
+    let histogram_matrix = histogram.counts();
+    let data = histogram_matrix.sum_axis(Axis(0));
+    let his_data: Vec<(f32, f32)> = data
+        .iter()
+        .enumerate()
+        .map(|(e, i)| (e as f32, *i as f32))
+        .collect();
+    let file = std::fs::File::create("standard_normal_hist.svg").unwrap();
+    let mut graph = poloto::plot("Histogram", "x", "y");
+    graph
+        .histogram("Stand.Norm.Dist.", his_data)
+        .xmarker(0)
+        .ymarker(0);
+    graph.simple_theme(poloto::upgrade_write(file));
 }
